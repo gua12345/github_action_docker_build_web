@@ -361,7 +361,7 @@ async function handleRequest(request) {
         <div class="sidebar light">
           <h1 class="light">构建配置</h1>
           <form id="build-form" method="POST">
-            <div class="form-description light">GitHub仓库URL：需要构建的GitHub仓库地址</div>
+            <div class="form-description light">GitHub仓库URL：需要构建的GitHub仓库地址.git结尾</div>
             <input class="light" type="text" name="githubRepo" value="" placeholder="GitHub仓库URL" required>
             <div class="form-description light">分支：GitHub仓库的分支</div>
             <input class="light" type="text" name="branch" value="main" placeholder="分支" required>
@@ -396,7 +396,9 @@ async function handleRequest(request) {
               const pullCommand = config ? `docker pull ${config.DOCKER_USERNAME}/${config.DOCKER_REPO_NAME}:${config.DOCKER_TAG}` : 'N/A';
               return `
                 <div class="workflow-item light">
+                  <button class="toggle-detail-btn light" style="right: 100px;" onclick="rebuildWithConfig(this, '${btoa(JSON.stringify(config))}')">再次构建</button>
                   <button class="toggle-detail-btn light" onclick="toggleDetail(this)">查看详情</button>
+                  <script>console.log('Adding rebuild button for run ID: ${run.id}')</script>
                   <div>拉取命令：
                     <span class="copy-command light" onclick="copyToClipboard(event, this)">${pullCommand}</span>
                   </div>
@@ -468,6 +470,27 @@ async function handleRequest(request) {
             }
             document.body.removeChild(textarea);
           }
+        }
+
+        function rebuildWithConfig(button, encodedConfig) {
+          const config = JSON.parse(atob(encodedConfig));
+          const form = document.getElementById('build-form');
+
+          form.elements['githubRepo'].value = config.GITHUB_REPO || '';
+          form.elements['branch'].value = config.BRANCH || 'main';
+          form.elements['dockerRepoName'].value = config.DOCKER_REPO_NAME || '';
+          form.elements['dockerUsername'].value = config.DOCKER_USERNAME || '';
+          form.elements['dockerTag'].value = config.DOCKER_TAG || 'latest';
+          form.elements['dockerfileAmd64'].value = config.DOCKERFILE_AMD64 || 'Dockerfile';
+          form.elements['dockerfileArm64'].value = config.DOCKERFILE_ARM64 || 'Dockerfile';
+
+          // 处理 architectures 多选框
+          const architectures = config.ARCHITECTURES ? config.ARCHITECTURES.split(',') : [];
+          form.querySelectorAll('input[name="architectures"]').forEach(checkbox => {
+            checkbox.checked = architectures.includes(checkbox.value);
+          });
+
+          showToast('构建配置已填充！');
         }
 
         const themeMedia = window.matchMedia('(prefers-color-scheme: dark)');
